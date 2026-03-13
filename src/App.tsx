@@ -31,6 +31,13 @@ import DarkModeSettings from './pages/DarkModeSettings';
 import HelpSupport from './pages/HelpSupport';
 import Search from './pages/Search';
 import EditProfile from './pages/EditProfile';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import ManageRecipes from './pages/admin/ManageRecipes';
+import ManageUsers from './pages/admin/ManageUsers';
+import ManageCategories from './pages/admin/ManageCategories';
+import ManageReviews from './pages/admin/ManageReviews';
+import AdminSettings from './pages/admin/AdminSettings';
+import { AdminGuard } from './components/AdminGuard';
 
 export default function App() {
   return (
@@ -61,6 +68,39 @@ export default function App() {
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/edit-profile" element={<EditProfile />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <AdminGuard>
+              <AdminDashboard />
+            </AdminGuard>
+          } />
+          <Route path="/admin/recipes" element={
+            <AdminGuard>
+              <ManageRecipes />
+            </AdminGuard>
+          } />
+          <Route path="/admin/users" element={
+            <AdminGuard>
+              <ManageUsers />
+            </AdminGuard>
+          } />
+          <Route path="/admin/categories" element={
+            <AdminGuard>
+              <ManageCategories />
+            </AdminGuard>
+          } />
+          <Route path="/admin/reviews" element={
+            <AdminGuard>
+              <ManageReviews />
+            </AdminGuard>
+          } />
+          <Route path="/admin/settings" element={
+            <AdminGuard>
+              <AdminSettings />
+            </AdminGuard>
+          } />
+
           <Route path="/about" element={<About />} />
           <Route path="/followers" element={<Followers />} />
           <Route path="/following" element={<Following />} />

@@ -1,90 +1,270 @@
-import { ArrowLeft, Camera, Plus, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowLeft, Camera, Plus, X, Loader2, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Publish() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    image_url: '',
+    ingredients: [{ name: '', amount: '' }],
+    instructions: [''],
+    category_id: '88888888-8888-8888-8888-888888888888' // Default to "Other" or similar if known, or prompt selection
+  });
+
+  const handleImageClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload to Supabase Storage
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user?.id}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('recipes')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('recipes')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+    } catch (error: any) {
+      alert('图片上传失败: ' + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const addIngredient = () => {
+    setFormData(prev => ({
+      ...prev,
+      ingredients: [...prev.ingredients, { name: '', amount: '' }]
+    }));
+  };
+
+  const removeIngredient = (index: number) => {
+    if (formData.ingredients.length <= 1) return;
+    setFormData(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateIngredient = (index: number, field: 'name' | 'amount', value: string) => {
+    const newIng = [...formData.ingredients];
+    newIng[index][field] = value;
+    setFormData(prev => ({ ...prev, ingredients: newIng }));
+  };
+
+  const addStep = () => {
+    setFormData(prev => ({
+      ...prev,
+      instructions: [...prev.instructions, '']
+    }));
+  };
+
+  const removeStep = (index: number) => {
+    if (formData.instructions.length <= 1) return;
+    setFormData(prev => ({
+      ...prev,
+      instructions: prev.instructions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateStep = (index: number, value: string) => {
+    const newSteps = [...formData.instructions];
+    newSteps[index] = value;
+    setFormData(prev => ({ ...prev, instructions: newSteps }));
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.title) return alert('请输入菜谱名称');
+    if (!formData.image_url && !imagePreview) return alert('请上传菜谱图片');
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('recipes').insert([{
+        ...formData,
+        author_name: profile?.username || user?.email?.split('@')[0] || '匿名用户',
+        rating: 5.0,
+        prep_time: 20 // Default or extract from description
+      }]);
+
+      if (error) throw error;
+      alert('发布成功！');
+      navigate('/main');
+    } catch (error: any) {
+      alert('发布失败: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#f8f6f6] max-w-md mx-auto">
-      <header className="sticky top-0 z-10 flex items-center bg-white p-4 border-b border-[#ec5b13]/10 justify-between">
+      <header className="sticky top-0 z-20 flex items-center bg-white p-4 border-b border-[#ec5b13]/10 justify-between">
         <div onClick={() => navigate(-1)} className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-[#ec5b13]/10 transition-colors cursor-pointer">
           <ArrowLeft className="text-slate-900" />
         </div>
-        <h1 className="text-lg font-bold flex-1 text-center">发布菜谱</h1>
-        <button className="text-[#ec5b13] text-base font-bold bg-[#ec5b13]/10 px-4 py-1.5 rounded-full hover:bg-[#ec5b13] hover:text-white transition-colors">
-          发布
+        <h1 className="text-lg font-bold flex-1 text-center text-slate-800">发布菜谱</h1>
+        <button 
+          onClick={handleSubmit}
+          disabled={loading || uploadingImage}
+          className="text-[#ec5b13] text-sm font-bold bg-[#ec5b13]/10 px-6 py-2 rounded-full hover:bg-[#ec5b13] hover:text-white transition-all disabled:opacity-50 flex items-center gap-2"
+        >
+          {loading ? <Loader2 size={16} className="animate-spin" /> : '完成'}
         </button>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-24">
+        {/* Image Upload Area */}
         <div className="bg-white p-4 mb-2">
-          <div className="relative w-full aspect-video bg-slate-100 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-300 cursor-pointer hover:border-[#ec5b13]/50 transition-colors mb-4">
-            <Camera className="text-slate-400 w-10 h-10 mb-2" />
-            <span className="text-slate-500 text-sm font-medium">添加成品图/视频</span>
+          <div 
+            onClick={handleImageClick}
+            className="relative w-full aspect-video bg-slate-50 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200 cursor-pointer hover:border-[#ec5b13]/40 hover:bg-[#ec5b13]/5 transition-all overflow-hidden"
+          >
+            {imagePreview ? (
+              <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+            ) : (
+              <>
+                <Camera className="text-slate-300 w-12 h-12 mb-3" />
+                <span className="text-slate-400 text-sm font-bold">上传成品大图</span>
+              </>
+            )}
+            {uploadingImage && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                <Loader2 className="text-[#ec5b13] animate-spin" size={32} />
+              </div>
+            )}
           </div>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            accept="image/*" 
+            className="hidden" 
+          />
 
-          <input type="text" placeholder="添加菜谱名称..." className="w-full text-xl font-bold text-slate-900 placeholder:text-slate-400 border-none focus:ring-0 p-0 mb-4" />
+          <input 
+            type="text" 
+            placeholder="填写菜谱标题..." 
+            className="w-full text-2xl font-black text-slate-800 placeholder:text-slate-300 border-none focus:ring-0 p-0 mt-6 mb-4"
+            value={formData.title}
+            onChange={e => setFormData({ ...formData, title: e.target.value })}
+          />
           
-          <textarea placeholder="分享这道菜背后的故事，或者一些烹饪小贴士..." className="w-full text-base text-slate-700 placeholder:text-slate-400 border-none focus:ring-0 p-0 min-h-[100px] resize-none"></textarea>
+          <textarea 
+            placeholder="分享一下这道菜的故事，或者是你的独门秘籍吧..." 
+            className="w-full text-sm text-slate-600 placeholder:text-slate-300 border-none focus:ring-0 p-0 min-h-[80px] resize-none leading-relaxed"
+            value={formData.description}
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
+          />
         </div>
 
-        <div className="bg-white p-4 mb-2">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">食材清单</h2>
+        {/* Ingredients Section */}
+        <div className="bg-white p-6 mb-2">
+          <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+            <span className="w-1.5 h-6 bg-[#ec5b13] rounded-full"></span>
+            准备食材
+          </h2>
           
-          <div className="space-y-3 mb-4">
-            <div className="flex items-center gap-2">
-              <input type="text" placeholder="食材名 (如: 鸡蛋)" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13]" />
-              <input type="text" placeholder="用量 (如: 2个)" className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13]" />
-              <button className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="text" placeholder="食材名 (如: 西红柿)" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13]" />
-              <input type="text" placeholder="用量 (如: 1个)" className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13]" />
-              <button className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+          <div className="space-y-4 mb-6">
+            {formData.ingredients.map((ing, idx) => (
+              <div key={idx} className="flex items-center gap-3 group animate-in slide-in-from-right-2 duration-300">
+                <input 
+                  type="text" 
+                  placeholder="食材: 如 鸡蛋" 
+                  className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#ec5b13]/20 transition-all"
+                  value={ing.name}
+                  onChange={e => updateIngredient(idx, 'name', e.target.value)}
+                />
+                <input 
+                  type="text" 
+                  placeholder="用量: 如 2个" 
+                  className="w-28 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#ec5b13]/20 transition-all"
+                  value={ing.amount}
+                  onChange={e => updateIngredient(idx, 'amount', e.target.value)}
+                />
+                <button 
+                  onClick={() => removeIngredient(idx)}
+                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            ))}
           </div>
 
-          <button className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-[#ec5b13]/30 rounded-xl text-[#ec5b13] font-medium hover:bg-[#ec5b13]/5 transition-colors">
+          <button 
+            onClick={addIngredient}
+            className="flex items-center justify-center gap-2 w-full py-4 bg-slate-50 rounded-2xl text-slate-500 font-bold hover:bg-slate-100 transition-all active:scale-[0.98]"
+          >
             <Plus className="w-5 h-5" />
             添加一行食材
           </button>
         </div>
 
-        <div className="bg-white p-4">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">制作步骤</h2>
+        {/* Steps Section */}
+        <div className="bg-white p-6">
+          <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+            <span className="w-1.5 h-6 bg-[#ec5b13] rounded-full"></span>
+            制作步骤
+          </h2>
           
-          <div className="space-y-6 mb-4">
-            <div className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className="w-6 h-6 rounded-full bg-[#ec5b13] text-white flex items-center justify-center text-xs font-bold">1</div>
-                <div className="w-px h-full bg-slate-200 my-1"></div>
-              </div>
-              <div className="flex-1">
-                <div className="w-full aspect-video bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 mb-2 cursor-pointer hover:bg-slate-200 transition-colors">
-                  <Camera className="text-slate-400 w-6 h-6" />
+          <div className="space-y-8 mb-6">
+            {formData.instructions.map((step, idx) => (
+              <div key={idx} className="flex gap-4 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-[#ec5b13] text-white flex items-center justify-center text-sm font-black shadow-lg shadow-[#ec5b13]/20">
+                    {idx + 1}
+                  </div>
+                  {idx < formData.instructions.length - 1 && <div className="w-0.5 flex-1 bg-slate-100 my-2"></div>}
                 </div>
-                <textarea placeholder="添加步骤说明..." className="w-full text-sm text-slate-700 placeholder:text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 min-h-[80px] focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13] resize-none"></textarea>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className="w-6 h-6 rounded-full bg-[#ec5b13] text-white flex items-center justify-center text-xs font-bold">2</div>
-              </div>
-              <div className="flex-1">
-                <div className="w-full aspect-video bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 mb-2 cursor-pointer hover:bg-slate-200 transition-colors">
-                  <Camera className="text-slate-400 w-6 h-6" />
+                <div className="flex-1 relative group">
+                  <textarea 
+                    placeholder="详细描述一下这个步骤的操作细节..." 
+                    className="w-full text-sm text-slate-700 placeholder:text-slate-300 bg-slate-50 border-none rounded-2xl px-4 py-4 min-h-[100px] focus:bg-white focus:ring-2 focus:ring-[#ec5b13]/20 transition-all resize-none leading-relaxed"
+                    value={step}
+                    onChange={e => updateStep(idx, e.target.value)}
+                  />
+                  <button 
+                    onClick={() => removeStep(idx)}
+                    className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
-                <textarea placeholder="添加步骤说明..." className="w-full text-sm text-slate-700 placeholder:text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 min-h-[80px] focus:border-[#ec5b13] focus:ring-1 focus:ring-[#ec5b13] resize-none"></textarea>
               </div>
-            </div>
+            ))}
           </div>
 
-          <button className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-[#ec5b13]/30 rounded-xl text-[#ec5b13] font-medium hover:bg-[#ec5b13]/5 transition-colors">
+          <button 
+            onClick={addStep}
+            className="flex items-center justify-center gap-2 w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-900 shadow-xl shadow-slate-200 transition-all active:scale-[0.98]"
+          >
             <Plus className="w-5 h-5" />
             添加下一步
           </button>
