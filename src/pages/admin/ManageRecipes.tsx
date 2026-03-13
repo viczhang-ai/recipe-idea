@@ -115,7 +115,7 @@ export default function ManageRecipes() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-black text-slate-800 text-sm mb-1 truncate max-w-[200px]">{r.title}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: {r.id.split('-')[0]}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: {String(r.id).split('-')[0]}</p>
                       </div>
                     </div>
                   </td>
@@ -132,13 +132,13 @@ export default function ManageRecipes() {
                         ))}
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
-                        <Clock size={12} /> {r.prep_time || 0} MINS
+                        <Clock size={12} /> {r.prep_time || r.prep_time_minutes || 0} MINS
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-5">
                     <p className="text-sm font-bold text-slate-800">{r.author_name || '系统管理员'}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{new Date(r.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '未知日期'}</p>
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">

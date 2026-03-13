@@ -9,7 +9,8 @@ import {
   Clock, 
   Flame, 
   ChevronDown,
-  Info
+  Info,
+  Camera
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -22,17 +23,29 @@ interface RecipeFormProps {
 export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps) {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+
+  // Function to normalize ingredients
+  const normalizeIngredients = (ing: any) => {
+    if (!ing || !Array.isArray(ing)) return [{ name: '', amount: '' }];
+    return ing.map(i => typeof i === 'string' ? { name: i, amount: '' } : i);
+  };
+
+  // Function to normalize instructions
+  const normalizeInstructions = (ins: any) => {
+    if (!ins || !Array.isArray(ins)) return [{ text: '', image_url: '' }];
+    return ins.map(i => typeof i === 'string' ? { text: i, image_url: '' } : i);
+  };
   
   const [formData, setFormData] = useState({
     title: recipe?.title || '',
     description: recipe?.description || '',
     category_id: recipe?.category_id || '',
-    ingredients: recipe?.ingredients || [''],
-    instructions: recipe?.instructions || [''],
-    prep_time: recipe?.prep_time || 15,
+    ingredients: normalizeIngredients(recipe?.ingredients),
+    instructions: normalizeInstructions(recipe?.instructions),
+    prep_time: recipe?.prep_time || recipe?.prep_time_minutes || 15,
     difficulty: recipe?.difficulty || '简单',
     rating: recipe?.rating || 5.0,
-    image_url: recipe?.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80',
+    image_url: recipe?.image_url || '',
     tags: recipe?.tags || []
   });
 
@@ -44,14 +57,14 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
     fetchCategories();
   }, []);
 
-  const handleIngredientChange = (index: number, value: string) => {
+  const handleIngredientChange = (index: number, field: 'name' | 'amount', value: string) => {
     const newIngredients = [...formData.ingredients];
-    newIngredients[index] = value;
+    newIngredients[index] = { ...newIngredients[index], [field]: value };
     setFormData({ ...formData, ingredients: newIngredients });
   };
 
   const addIngredient = () => {
-    setFormData({ ...formData, ingredients: [...formData.ingredients, ''] });
+    setFormData({ ...formData, ingredients: [...formData.ingredients, { name: '', amount: '' }] });
   };
 
   const removeIngredient = (index: number) => {
@@ -59,14 +72,14 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
     setFormData({ ...formData, ingredients: newIngredients });
   };
 
-  const handleStepChange = (index: number, value: string) => {
+  const handleStepChange = (index: number, field: 'text' | 'image_url', value: string) => {
     const newSteps = [...formData.instructions];
-    newSteps[index] = value;
+    newSteps[index] = { ...newSteps[index], [field]: value };
     setFormData({ ...formData, instructions: newSteps });
   };
 
   const addStep = () => {
-    setFormData({ ...formData, instructions: [...formData.instructions, ''] });
+    setFormData({ ...formData, instructions: [...formData.instructions, { text: '', image_url: '' }] });
   };
 
   const removeStep = (index: number) => {
@@ -80,7 +93,16 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
 
     try {
       const payload = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        category_id: formData.category_id,
+        ingredients: formData.ingredients,
+        instructions: formData.instructions,
+        prep_time: formData.prep_time,
+        difficulty: formData.difficulty,
+        rating: formData.rating,
+        image_url: formData.image_url,
+        tags: formData.tags,
         author_name: recipe?.author_name || '管理员',
         author_role: '官方主厨'
       };
@@ -130,7 +152,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
               <label className="text-sm font-bold text-slate-700">食谱名称</label>
               <input 
                 required
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] focus:ring-4 focus:ring-[#ec5b13]/5 transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] focus:ring-4 focus:ring-[#ec5b13]/5 transition-all font-medium"
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
                 placeholder="例如：黄金蛋炒饭"
@@ -141,7 +163,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
               <div className="relative">
                 <select 
                   required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] appearance-none"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] appearance-none font-medium"
                   value={formData.category_id}
                   onChange={e => setFormData({ ...formData, category_id: e.target.value })}
                 >
@@ -157,7 +179,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
             <label className="text-sm font-bold text-slate-700">简短描述</label>
             <textarea 
               rows={3}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] resize-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] resize-none font-medium leading-relaxed"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               placeholder="介绍一下这道美味吧..."
@@ -171,9 +193,9 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
               </label>
               <input 
                 type="number"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13]"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] font-medium"
                 value={formData.prep_time}
-                onChange={e => setFormData({ ...formData, prep_time: parseInt(e.target.value) })}
+                onChange={e => setFormData({ ...formData, prep_time: parseInt(e.target.value) || 0 })}
               />
             </div>
             <div className="space-y-2">
@@ -181,7 +203,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
                 <Flame size={16} className="text-slate-400" /> 难度等级
               </label>
               <select 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13]"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] font-medium"
                 value={formData.difficulty}
                 onChange={e => setFormData({ ...formData, difficulty: e.target.value })}
               >
@@ -191,11 +213,14 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">封面预览 (URL)</label>
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <Camera size={16} className="text-slate-400" /> 封面图片 (URL)
+              </label>
               <input 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13]"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#ec5b13] font-medium"
                 value={formData.image_url}
                 onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+                placeholder="https://..."
               />
             </div>
           </div>
@@ -223,10 +248,16 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
             {formData.ingredients.map((ing, idx) => (
               <div key={idx} className="flex gap-2 group">
                 <input 
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-400"
-                  value={ing}
-                  placeholder="例如：鸡蛋 2个"
-                  onChange={e => handleIngredientChange(idx, e.target.value)}
+                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-400 font-medium"
+                  value={ing.name}
+                  placeholder="食材: 鸡蛋"
+                  onChange={e => handleIngredientChange(idx, 'name', e.target.value)}
+                />
+                <input 
+                  className="w-24 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-400 font-medium"
+                  value={ing.amount}
+                  placeholder="2个"
+                  onChange={e => handleIngredientChange(idx, 'amount', e.target.value)}
                 />
                 <button 
                   type="button" 
@@ -257,19 +288,27 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
             </button>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             {formData.instructions.map((step, idx) => (
               <div key={idx} className="flex gap-4 group items-start">
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 mt-1 shrink-0">
                   {idx + 1}
                 </div>
-                <textarea 
-                  rows={2}
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-purple-400 resize-none"
-                  value={step}
-                  placeholder={`第 ${idx + 1} 步操作说明...`}
-                  onChange={e => handleStepChange(idx, e.target.value)}
-                />
+                <div className="flex-1 space-y-3">
+                  <textarea 
+                    rows={2}
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-purple-400 resize-none font-medium leading-relaxed"
+                    value={step.text}
+                    placeholder={`第 ${idx + 1} 步操作说明...`}
+                    onChange={e => handleStepChange(idx, 'text', e.target.value)}
+                  />
+                  <input 
+                    className="w-full px-4 py-2 bg-slate-50/50 border border-slate-100 rounded-xl outline-none focus:border-purple-300 text-[10px] font-mono"
+                    value={step.image_url}
+                    placeholder="步骤图片 URL (可选)"
+                    onChange={e => handleStepChange(idx, 'image_url', e.target.value)}
+                  />
+                </div>
                 <button 
                   type="button" 
                   onClick={() => removeStep(idx)}
@@ -283,7 +322,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
         </section>
       </form>
 
-      <footer className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4 sticky bottom-0 z-10">
+      <footer className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4 sticky bottom-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
         <button 
           type="button"
           onClick={onCancel}
@@ -295,7 +334,7 @@ export default function RecipeForm({ recipe, onSave, onCancel }: RecipeFormProps
           type="button"
           onClick={handleSubmit}
           disabled={loading}
-          className="flex items-center gap-2 px-10 py-3 bg-[#ec5b13] text-white rounded-2xl font-bold hover:bg-[#d94f0e] shadow-lg shadow-[#ec5b13]/20 transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-10 py-3 bg-[#ec5b13] text-white rounded-2xl font-bold hover:bg-[#d94f0e] shadow-lg shadow-[#ec5b13]/20 transition-all disabled:opacity-50 active:scale-95"
         >
           {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
           确认发布
