@@ -68,8 +68,6 @@ export default function App() {
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/edit-profile" element={<EditProfile />} />
-          
-          {/* Admin Routes */}
           <Route path="/admin" element={
             <AdminGuard>
               <AdminDashboard />
@@ -100,7 +98,7 @@ export default function App() {
               <AdminSettings />
             </AdminGuard>
           } />
-
+          {/* We will add more admin routes soon */}
           <Route path="/about" element={<About />} />
           <Route path="/followers" element={<Followers />} />
           <Route path="/following" element={<Following />} />

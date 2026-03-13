@@ -8,7 +8,9 @@ export default function Profile() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) navigate('/login');
+    if (!loading && !user) {
+      navigate('/login');
+    }
   }, [user, loading, navigate]);
 
   const handleSignOut = async () => {
@@ -30,9 +32,17 @@ export default function Profile() {
           <div className="flex flex-col items-center">
             <div className="relative">
               <div className="w-24 h-24 rounded-full border-4 border-[#ec5b13]/10 overflow-hidden bg-slate-200">
-                {avatarUrl ? <img src={avatarUrl} alt={username} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-500 text-3xl font-bold">{username[0].toUpperCase()}</div>}
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-500 text-3xl font-bold">
+                    {username[0].toUpperCase()}
+                  </div>
+                )}
               </div>
-              <Link to="/edit-profile" className="absolute bottom-0 right-0 bg-[#ec5b13] text-white p-1 rounded-full border-2 border-white hover:bg-[#d94f0e] transition-colors"><Edit3 className="w-4 h-4" /></Link>
+              <Link to="/edit-profile" className="absolute bottom-0 right-0 bg-[#ec5b13] text-white p-1 rounded-full border-2 border-white hover:bg-[#d94f0e] transition-colors">
+                <Edit3 className="w-4 h-4" />
+              </Link>
             </div>
             <h2 className="mt-4 text-2xl font-bold text-slate-900">{username}</h2>
             <p className="mt-1 text-slate-400 text-xs">{user.email}</p>
@@ -40,22 +50,33 @@ export default function Profile() {
           </div>
 
           <div className="flex justify-around mt-8 bg-slate-50 rounded-xl py-4">
-            <Link to="/followers" className="flex flex-col items-center"><span className="text-xl font-bold text-slate-900">0</span><span className="text-xs text-slate-500">粉丝</span></Link>
+            <Link to="/followers" className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform">
+              <span className="text-xl font-bold text-slate-900">0</span>
+              <span className="text-xs text-slate-500">粉丝</span>
+            </Link>
             <div className="w-px h-8 bg-slate-200 self-center"></div>
-            <Link to="/following" className="flex flex-col items-center"><span className="text-xl font-bold text-slate-900">0</span><span className="text-xs text-slate-500">关注</span></Link>
+            <Link to="/following" className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform">
+              <span className="text-xl font-bold text-slate-900">0</span>
+              <span className="text-xs text-slate-500">关注</span>
+            </Link>
             <div className="w-px h-8 bg-slate-200 self-center"></div>
-            <Link to="/my-recipes" className="flex flex-col items-center"><span className="text-xl font-bold text-slate-900">0</span><span className="text-xs text-slate-500">菜谱</span></Link>
+            <Link to="/my-recipes" className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform">
+              <span className="text-xl font-bold text-slate-900">0</span>
+              <span className="text-xs text-slate-500">菜谱</span>
+            </Link>
           </div>
         </div>
 
         <div className="mt-4 px-4 space-y-2">
           {profile?.is_admin && (
-            <Link to="/admin" className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100 hover:bg-red-100/50 transition-colors group mb-4">
+            <Link to="/admin" className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100 hover:bg-red-100/50 transition-colors group">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform"><Shield size={20} /></div>
+                <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform">
+                  <Shield size={20} />
+                </div>
                 <div>
                   <p className="font-bold text-red-700 text-sm">管理后台</p>
-                  <p className="text-[10px] text-red-500 font-medium">全站管理权限已开启</p>
+                  <p className="text-[10px] text-red-500">全站管理权限已开启</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-red-300" />
@@ -63,17 +84,21 @@ export default function Profile() {
           )}
 
           {[
-            { icon: <Heart className="w-5 h-5" />, label: '我的收藏', to: '/main/favorites', color: 'text-[#ec5b13]', bg: 'bg-[#ec5b13]/10' },
+            { icon: <Heart className="w-5 h-5" />, label: '我的收藏', to: '/favorites', color: 'text-[#ec5b13]', bg: 'bg-[#ec5b13]/10' },
             { icon: <BookOpen className="w-5 h-5" />, label: '我的菜谱', to: '/my-recipes', color: 'text-[#ec5b13]', bg: 'bg-[#ec5b13]/10' },
             { icon: <Clock className="w-5 h-5" />, label: '浏览历史', to: '/history', color: 'text-[#ec5b13]', bg: 'bg-[#ec5b13]/10' },
             { icon: <Bell className="w-5 h-5" />, label: '消息通知', to: '/messages', color: 'text-[#ec5b13]', bg: 'bg-[#ec5b13]/10' },
             { divider: true },
             { icon: <Settings className="w-5 h-5" />, label: '设置', to: '/settings', color: 'text-slate-600', bg: 'bg-slate-100' },
             { icon: <Info className="w-5 h-5" />, label: '关于我们', to: '/about', color: 'text-slate-600', bg: 'bg-slate-100' },
-          ].map((item: any, i) => item.divider ? <div key={i} className="py-2"></div> : (
+          ].map((item: any, i) => item.divider ? (
+            <div key={i} className="py-2"></div>
+          ) : (
             <Link key={i} to={item.to!} className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center ${item.color}`}>{item.icon}</div>
+                <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center ${item.color}`}>
+                  {item.icon}
+                </div>
                 <span className="font-medium text-sm text-slate-700">{item.label}</span>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-400" />
